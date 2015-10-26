@@ -24,7 +24,7 @@ start_link() ->
 init([]) ->
     MaxRestart = 5,
     MaxTime = 3000,
-    TopicApiServer = ?CHILD(topic, worker),
+    FranzServer = ?CHILD(franz, worker),
     TopicSuperSup = ?CHILD(topic_supersup, supervisor),
     % one_for_all correct? Seems like it. They can't work without each other.
-    {ok, {{one_for_all, MaxRestart, MaxTime}, [TopicSuperSup, TopicApiServer]}}.
+    {ok, {{one_for_all, MaxRestart, MaxTime}, [TopicSuperSup, FranzServer]}}.

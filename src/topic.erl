@@ -1,69 +1,72 @@
--module(topic). % TODO: should this be plural?
--behaviour(gen_server).
+-module(topic).
+-behaiour(gen_server).
 
-% The topic server keeps tracks of all the topics in the broker.
+-export([partition_count/1]).
 
-% Client API
--export([start_link/0, new_topic/1, new_topic/2, count/0, partition_count/1]).
+-export([start_link/3, init/1, handle_call/3, handle_cast/2, handle_info/2, code_change/3, terminate/2]).
+
+% A topic keeps track of its partitions (think of it as a partition server).
+
+%% The friendly supervisor is started dynamically!
+-define(SPEC,
+    {partition_sup,
+    {partition_sup, start_link, []},
+    temporary,
+    10000,
+    supervisor,
+    [partition_sup]}).
+
+-record(state, {name = "",
+                num_partitions = 1,
+                partition_sup,
+                partitions = []
+                }).
+
+
+% CLIENT API
+partition_count(TopicServerPid) -> gen_server:call(TopicServerPid, {partition_count}).
+
+% TopicSup is the Pid of the supervisor of this server. We'll ask him to start the PartitionSup.
+start_link(Name, NumPartitions, TopicSup) ->
+    gen_server:start_link(?MODULE, {Name, NumPartitions, TopicSup}, []).
 
 % gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
+init({Name, NumPartitions, TopicSup}) ->
+    %% We need to find the Pid of the worker supervisor from here,
+    %% but alas, this would be calling the supervisor while it waits for us!
+    self() ! {start_partition_sup, NumPartitions, TopicSup}, % TODO: pass number of partitions?
+    State = #state{name = Name, num_partitions = NumPartitions},
+    {ok, State}. %This list will hold the partition Pids
 
--define(SERVER, ?MODULE).
+handle_call({partition_count}, _From, State = #state{num_partitions = NumPartitions}) ->
+    {reply, NumPartitions, State};
+handle_call(_Msg, _From, State) -> {noreply, State}.
 
-start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+handle_cast(_Msg, State) -> {noreply, State}.
 
-% Start a topic with a single partition
-new_topic(Name) -> new_topic(Name, 1).
-
-% Start a topic with multiple partitions
-new_topic(Name, Partitions) when Partitions > 0 -> 
-    gen_server:call(?MODULE, {new_topic, Name, Partitions}).
-
-count() -> gen_server:call(?MODULE, {count}).
-
-partition_count(TopicPid) when is_pid(TopicPid) -> topic_server:partition_count(TopicPid);
-partition_count(Name) -> gen_server:call(?MODULE, {partition_count, Name}).
-
-% gen_server callbacks
-init([]) -> 
-    Topics = dict:new(),
-    {ok, Topics}.
-
-%% @private
-
-handle_call({partition_count, Name}, _From, Topics) ->
-    Reply = case dict:find(Name, Topics) of
-        error -> {error, unknown_topic};
-        {ok, TopicPid} -> gen_server:call(TopicPid, {partition_count})
-    end,
-    {reply, Reply, Topics};
-handle_call({new_topic, Name, Partitions}, _From, Topics) ->
-     % TODO: refactor. Server must keep track of all topics.
-    TopicPid = case topic_supersup:start_topic(Name, Partitions) of
-        {ok, Pid} -> Pid;
-        {error, {already_started, Pid}} -> Pid
-    end,
-    NewTopics = dict:store(Name, TopicPid, Topics),
-    {reply, {ok, Pid}, NewTopics};
-handle_call({count}, _From, Topics) ->
-    {reply, dict:size(Topics), Topics};
-
-handle_call(_Request, _From, State) ->
-    {reply, {error, unknown_call}, State}.
-
-%% @private
-handle_cast(_Msg, State) ->
+handle_info({start_partition_sup, NumPartitions, TopicSup}, State) ->
+    {ok, PartitionSup} = supervisor:start_child(TopicSup, ?SPEC),
+    link(PartitionSup),
+    PartitionsList = start_partitions(PartitionSup, NumPartitions),
+    NewState = State#state{partition_sup = PartitionSup, partitions = PartitionsList},
+    {noreply, NewState};
+handle_info(Msg, State) ->
+    io:format("Unknown msg: ~p~n", [Msg]),
     {noreply, State}.
 
-%% @private
-handle_info(_Info, State) ->
-    {noreply, State}.
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
 
-%% @private
 terminate(_Reason, _State) ->
     ok.
 
-%% @private
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+% Internal helpers
+start_partitions(PartitionSup, NumPartitions) ->
+    start_partitions(PartitionSup, NumPartitions, []).
+
+start_partitions(_PartitionSup, 0, PartitionsList) -> PartitionsList;
+start_partitions(PartitionSup, NumPartitions, PartitionsList) ->
+    {ok, PartitionPid} = supervisor:start_child(PartitionSup, []),
+    %TODO: do we actually need to monitor this guy?
+    _Ref = erlang:monitor(process, PartitionPid),
+    start_partitions(PartitionSup, NumPartitions - 1, [PartitionPid| PartitionsList]).
