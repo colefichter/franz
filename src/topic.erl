@@ -1,7 +1,7 @@
 -module(topic).
 -behaiour(gen_server).
 
--export([partition_count/1]).
+-export([partition_count/1, select_partition/3]).
 
 -export([start_link/3, init/1, handle_call/3, handle_cast/2, handle_info/2, code_change/3, terminate/2]).
 
@@ -19,7 +19,9 @@
 -record(state, {name = "",
                 num_partitions = 1,
                 partition_sup,
-                partitions = []
+                partitions = [],
+                last_partition_select = 0,
+                partitioner = fun select_partition/3
                 }).
 
 
@@ -70,3 +72,8 @@ start_partitions(PartitionSup, NumPartitions, PartitionsList) ->
     %TODO: do we actually need to monitor this guy?
     _Ref = erlang:monitor(process, PartitionPid),
     start_partitions(PartitionSup, NumPartitions - 1, [PartitionPid| PartitionsList]).
+
+% The default partitioner:
+select_partition(_Key, NumPartitions, LastPartitionSelected) ->
+    (LastPartitionSelected + 1) rem NumPartitions.
+    
