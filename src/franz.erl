@@ -1,7 +1,7 @@
--module(franz). % TODO: should this be plural?
+-module(franz).
 -behaviour(gen_server).
 
-% The topic server keeps tracks of all the topics in the broker.
+% This module acts as the API that clients will interact with. It also tracks all of the topics in the broker.
 
 % Client API
 -export([start_link/0, new_topic/1, new_topic/2, count/0, partition_count/1]).
