@@ -1,7 +1,7 @@
 -module(topic).
 -behaiour(gen_server).
 
--export([partition_count/1, select_partition_number/3, put/2, put/3]).
+-export([partition_count/1, select_partition_number/3, put/2, put/3, get_partitioner/1, set_partitioner/2]).
 
 -export([start_link/3, init/1, handle_call/3, handle_cast/2, handle_info/2, code_change/3, terminate/2]).
 
@@ -21,18 +21,23 @@
                 partition_sup,
                 partitions = [],
                 last_partition_selected = 0,
-                partitioner = fun select_partition_number/3
+                partitioner = fun topic:select_partition_number/3
                 }).
-
-put(TopicServerPid, Key, Value) -> gen_server:call(TopicServerPid, {put, Key, Value}).
-put(TopicServerPid, Value) -> put(TopicServerPid, null, Value).
-
-% CLIENT API
-partition_count(TopicServerPid) -> gen_server:call(TopicServerPid, {partition_count}).
 
 % TopicSup is the Pid of the supervisor of this server. We'll ask him to start the PartitionSup.
 start_link(Name, NumPartitions, TopicSup) ->
     gen_server:start_link(?MODULE, {Name, NumPartitions, TopicSup}, []).
+
+% CLIENT API
+partition_count(TopicServerPid) -> gen_server:call(TopicServerPid, {partition_count}).
+
+put(TopicServerPid, Key, Value) -> gen_server:call(TopicServerPid, {put, Key, Value}).
+put(TopicServerPid, Value) -> put(TopicServerPid, null, Value).
+
+get_partitioner(TopicServerPid) -> gen_server:call(TopicServerPid, {get_partitioner}).
+
+set_partitioner(TopicServerPid, PartitionFun) -> gen_server:call(TopicServerPid, {set_partitioner, PartitionFun}).
+
 
 % gen_server callbacks
 init({Name, NumPartitions, TopicSup}) ->
@@ -42,8 +47,17 @@ init({Name, NumPartitions, TopicSup}) ->
     State = #state{name = Name, num_partitions = NumPartitions},
     {ok, State}. %This list will hold the partition Pids
 
-
-handle_call({put, null, Value}, _From, State) ->
+handle_call({set_partitioner, PartitionFun}, _From, State) ->
+    {Reply, NewState} = case erlang:fun_info(PartitionFun, arity) of
+        {arity, 3} -> 
+            NewState1 = State#state{partitioner=PartitionFun},
+            {ok, NewState1};
+        {arity, _any} ->
+            {{error, wrong_arity}, State}
+    end,
+    {reply, Reply, NewState};
+handle_call({get_partitioner}, _From, State) -> {reply, State#state.partitioner, State};
+handle_call({put, null, Value}, _From, State) -> 
     NumPartitions = State#state.num_partitions,
     Partitions = State#state.partitions,
     Reply = case NumPartitions > 1 of
@@ -56,15 +70,15 @@ handle_call({put, Key, Value}, _From, State) ->
     Partitions = State#state.partitions,
     {Reply, NewState} = case NumPartitions == 1 of
         true -> 
-            Reply = write_to_partition(Partitions, 1, Key, Value), %Ignore partition selection
-            {Reply, State};
+            Reply1 = write_to_partition(Partitions, 1, Key, Value), %Ignore partition selection
+            {Reply1, State};
         false -> 
             LastPartitionSelected = State#state.last_partition_selected,
             PartitionFunction = State#state.partitioner,
             SelectedPartitionNumber = PartitionFunction(Key, NumPartitions, LastPartitionSelected),
-            Reply = write_to_partition(Partitions, SelectedPartitionNumber, Key, Value),
+            Reply1 = write_to_partition(Partitions, SelectedPartitionNumber, Key, Value),
             NewState1 = State#state{last_partition_selected=SelectedPartitionNumber},
-            {Reply, NewState1}
+            {Reply1, NewState1}
     end,
     {reply, Reply, NewState};
 

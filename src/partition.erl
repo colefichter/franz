@@ -23,7 +23,9 @@ start_link(Topic, PartitionNumber) -> gen_server:start_link(?MODULE, {Topic, Par
 %length(ServerPid) -> gen_server:call(ServerPid, {length}).
 
 put(ServerPid, Key, Value) -> gen_server:cast(ServerPid, {put, Key, Value}).
-put(ServerPid, {Key, Value}) -> gen_server:cast(ServerPid, {put, Key, Value}).
+% This turns out to be bad! Make K/V definition explicit!
+%put(ServerPid, {Key, Value}) -> gen_server:cast(ServerPid, {put, Key, Value}).
+put(ServerPid, Value) -> gen_server:cast(ServerPid, {put, null, Value}).
 
 %get(ServerPid, Offset) -> gen_server:call(ServerPid, {get, Offset}).
 
@@ -31,7 +33,7 @@ put(ServerPid, {Key, Value}) -> gen_server:cast(ServerPid, {put, Key, Value}).
 init(Args = {Topic, PartitionNumber}) -> 
     LogName = log_name(Args),
     State = #state{topic=Topic, number=PartitionNumber, log_name=LogName},
-    open_disk_log(LogName),
+    ok = open_disk_log(LogName),
     {ok, State}.
 
 %handle_call({get, Offset}, _From, Items) when Offset > erlang:length(Items) -> %TODO cache length in state
@@ -51,6 +53,7 @@ handle_cast({put, Key, Value}, State) ->
     % This might be wrong! If a disk write fails, we're going to respond "ok" to the client!
     % But changing this from cast to call will force the client to block while the write happens...
     % which is worse?
+    % See partition_tests:it_must_store_values_in_order_test() for an example of async issues.
     Message = {key, Key, value, Value},
     disk_log:log(State#state.log_name, Message),
     {noreply, State};
@@ -74,4 +77,7 @@ log_name(Topic, PartitionNumber) -> Topic ++ integer_to_list(PartitionNumber).
 
 open_disk_log(LogName) ->
     Options = [{name, LogName}, {file, "data/" ++ LogName}],
-    {ok, LogName} = disk_log:open(Options).
+    case disk_log:open(Options) of
+        {ok, LogName} -> ok;
+        {repaired, LogName, _, _} -> ok
+    end.

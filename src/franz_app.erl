@@ -3,7 +3,15 @@
 -behaviour(application).
 
 %% Application callbacks
--export([start/2, stop/1]).
+-export([start/2, stop/1, bootstrap/0]).
+
+bootstrap() -> 
+    spawn(fun() -> 
+        % Allow the application infrastructure to start...
+        timer:sleep(250),
+        % ...then launch our application.
+        application:start(franz)
+    end).
 
 %% ===================================================================
 %% Application callbacks
@@ -19,3 +27,5 @@ start(_StartType, _StartArgs) ->
 
 stop(_State) ->
     ok.
+
+
