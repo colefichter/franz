@@ -10,6 +10,11 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
+    {ok, Cwd} = file:get_cwd(),
+    % Will this work on windows?
+    DataDir = Cwd ++ "/data",
+    io:format("FRANZ is starting in ~p with data directory ~p~n", [Cwd, DataDir]),
+    file:make_dir(DataDir),
     franz_sup:start_link().
 
 stop(_State) ->
