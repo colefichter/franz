@@ -3,12 +3,12 @@
 -behaviour(gen_server).
 
 % Client API
--export([start_link/2, put/2, put/3]).
+-export([start_link/3, put/2, put/3]).
 
 % gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
--export([log_name/1, log_name/2]).
+-export([log_name/2]).
 
 -define(SERVER, ?MODULE).
 
@@ -18,7 +18,8 @@
                 }).
 
 % Client API
-start_link(Topic, PartitionNumber) -> gen_server:start_link(?MODULE, {Topic, PartitionNumber}, []).
+start_link(TopicServerPid, Topic, PartitionNumber) -> 
+    gen_server:start_link(?MODULE, {TopicServerPid, Topic, PartitionNumber}, []).
 
 %length(ServerPid) -> gen_server:call(ServerPid, {length}).
 
@@ -30,10 +31,11 @@ put(ServerPid, Value) -> gen_server:cast(ServerPid, {put, null, Value}).
 %get(ServerPid, Offset) -> gen_server:call(ServerPid, {get, Offset}).
 
 % gen_server callbacks
-init(Args = {Topic, PartitionNumber}) -> 
-    LogName = log_name(Args),
+init({TopicServerPid, Topic, PartitionNumber}) -> 
+    LogName = log_name(Topic, PartitionNumber),
     State = #state{topic=Topic, number=PartitionNumber, log_name=LogName},
     ok = open_disk_log(LogName),
+    topic:register_started_partition(TopicServerPid, Topic, PartitionNumber, self()),
     {ok, State}.
 
 %handle_call({get, Offset}, _From, Items) when Offset > erlang:length(Items) -> %TODO cache length in state
@@ -72,7 +74,6 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 % Internal Helpers
-log_name({Topic, PartitionNumber}) -> log_name(Topic, PartitionNumber).
 log_name(Topic, PartitionNumber) -> Topic ++ integer_to_list(PartitionNumber).
 
 open_disk_log(LogName) ->

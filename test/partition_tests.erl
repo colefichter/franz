@@ -5,8 +5,8 @@
 -include_lib("eunit/include/eunit.hrl").
 
 it_should_start_empty_test() ->
-    file:delete("data/it_should_start_empty_test"),
-    {ok, P} = partition:start_link("it_should_start_empty_test", 1),
+    file:delete("data/it_should_start_empty_test1"),
+    {ok, _P} = partition:start_link(self(), "it_should_start_empty_test", 1),
     % Wait for writes... should put() be a call rather than cast? If you remove this,
     % chances are the match will fail with EOF!
     timer:sleep(100),
@@ -14,7 +14,7 @@ it_should_start_empty_test() ->
 
 it_must_store_values_in_order_test() ->
     file:delete("data/it_must_store_values_in_order_test1"),
-    {ok, P} = partition:start_link("it_must_store_values_in_order_test", 1),
+    {ok, P} = partition:start_link(self(), "it_must_store_values_in_order_test", 1),
     L = [A,B,C] = [{"A", "First"}, {"B", <<"Second">>}, {c, third}],
     D = something_else, %This one is going to be saved with an explicit key
     [partition:put(P, X) || X <- L],

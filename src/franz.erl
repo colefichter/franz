@@ -16,6 +16,8 @@ start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 % Start a topic with a single partition
 new_topic(Name) -> new_topic(Name, 1).
 
+% TODO: simplify API by returning just Pid rather than {ok, Pid}?
+
 % Start a topic with multiple partitions
 new_topic(Name, Partitions) when Partitions > 0 -> 
     gen_server:call(?MODULE, {new_topic, Name, Partitions}).
