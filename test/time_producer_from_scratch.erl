@@ -1,4 +1,4 @@
--module(time_producer).
+-module(time_producer_from_scratch).
 
 -export([start_link/0]).
 
@@ -12,7 +12,7 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 init([]) ->
-    {ok, Topic} = franz:new_topic("time_producer"),
+    {ok, Topic} = franz:new_topic("time_producer_from_scratch"),
     delay_trigger(),
     {ok, Topic}.
 
