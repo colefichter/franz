@@ -13,9 +13,8 @@ start_link() -> gen_timed_producer:start_link({local, ?MODULE}, ?MODULE, ?TOPIC,
 % Callbacks
 init([]) -> {ok, []}. %This simple producer doesn't need state.
 
-interval(_State) -> 
-    % Having an interval callback allows us to adjust it dynamically after each cycle.
-    {ok, 1000}.
+% Having an interval callback allows us to adjust it dynamically after each cycle.
+interval(_State) -> {ok, 1000}.
 
 do_one_cycle(State) ->
     % To publish a message to the topic, return {next_message, Message, State}.

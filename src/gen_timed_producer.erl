@@ -28,7 +28,7 @@ init({CallbackModule, Topic, InitArgs}) -> %TODO: multiple partitions
     {ok, {CallbackModule, TopicPid, State}}.
 
 handle_info(trigger, {CallbackModule, TopicPid, InternalState}) ->
-    NewInternalState = case CallbackModule:do_one_cycle(InternalState) of %TODO: do we pass any args into here? Maybe allow local state?
+    NewInternalState = case CallbackModule:do_one_cycle(InternalState) of
         ok -> InternalState;
         {next_message, Message, AdjustedInternalState} ->
             topic:put(TopicPid, Message),
@@ -44,5 +44,5 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 % INTERNAL HELPERS
 create_trigger(CallbackModule, InternalState) -> 
-    {ok, Interval} = CallbackModule:interval(InternalState), %TODO: do we pass any args/state here to adjust the delay?
+    {ok, Interval} = CallbackModule:interval(InternalState),
     erlang:send_after(Interval, self(), trigger).
