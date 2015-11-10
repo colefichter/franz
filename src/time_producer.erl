@@ -17,6 +17,7 @@ init([]) -> {ok, []}. %This simple producer doesn't need state.
 interval(_State) -> {ok, 1000}.
 
 do_one_cycle(State) ->
+    io:format("~p time_producer is doing one cycle.~n", [self()]),
     % To publish a message to the topic, return {next_message, Message, State}.
     % To return without publishing a message, just return ok.
     Message = calendar:local_time(),

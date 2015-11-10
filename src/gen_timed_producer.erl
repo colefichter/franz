@@ -10,11 +10,11 @@
 
 % Callbacks that a producer module must support
 behaviour_info(callbacks) ->
-    [{interval,1},
+    [{init, 1},
+     {interval,1},
      {do_one_cycle,1}
     ];
-behaviour_info(_Other) ->
-    undefined.
+behaviour_info(_Other) -> undefined.
 
 % CLIENT API:
 start_link({local, Name}, CallbackModule, Topic, InitArgs) when is_list(Topic) ->
