@@ -12,7 +12,7 @@
 -define(DEFAULT_INTERVAL, 50).
 
 % Callbacks that a producer module must support
-behaviour_info(callbacks) -> [{process,2}];
+behaviour_info(callbacks) -> [{process,3}];
 behaviour_info(_Other) -> undefined.
 
 % TODO:
@@ -62,9 +62,8 @@ read_one_chunk({{cont, Continuation}, {input_topic, InTopic}, {output_topic, OT}
             await(I), % Wait for more records
             Continuation;
         {NewContinuation, [Message]} ->
-            {key, K, value, V} = Message,
-            % {OutK, OutV} = Mod:process(K,V),
-            case Mod:process(K, V) of
+            {{offset, O}, {key, K}, {value, V}} = Message,
+            case Mod:process(O, K, V) of
                 ok -> ok;
                 {OutK, OutV} -> 
                     topic:put(OT, OutK, OutV)

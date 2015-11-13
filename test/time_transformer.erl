@@ -2,7 +2,7 @@
 
 -behaviour(gen_stateless_transform).
 
--export([process/2, start_link/0]).
+-export([process/3, start_link/0]).
 
 start_link() -> 
     time_producer:start_link(),
@@ -13,9 +13,9 @@ start_link() ->
     gen_stateless_transform:start_link({local, ?MODULE}, ?MODULE, InTopic, OutTopic, PollingInterval).
 
 %This is the core transformation callback
-process(Key, Value = {Date, Time}) ->
-    io:format("~p transforming ~p ~p~n", [self(), Key, Value]),
+process(Offset, Key, Value = {Date, Time}) ->
     NewValue = {processed, Date, Time},
+    io:format("~p transforming O:~p K:~p V:~p~n   -> ~p~n", [self(), Offset, Key, Value, NewValue]),
     % To publish a message to the output topic, return {Key, Value}.
     % To return without publishing a message, just return ok.
     {Key, NewValue}.

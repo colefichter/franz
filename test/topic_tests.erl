@@ -45,26 +45,23 @@ it_must_validate_the_partioner_test() ->
     ?assertEqual({error, wrong_arity}, Reply),
     application:stop(franz).
 
-
-
-
-
 it_must_handle_partition_failures_test() ->
     application:start(franz),
     file:delete("data/it_must_handle_partition_failures_test1"),
     T = create_topic("it_must_handle_partition_failures_test"),
     % Validate an initial write:
     topic:put(T, "TEST1"),
-    {_, [R1]} = disk_log:chunk("it_must_handle_partition_failures_test1", start, 4),
-    ?assertEqual({key, null, value, "TEST1"}, R1),
+    {_, [R1]} = disk_log:chunk("it_must_handle_partition_failures_test1", start, 1),
+    ?assertEqual({{offset, 1}, {key, null}, {value, "TEST1"}}, R1),
     % Kill the partition, so that it restarts:
     [P] = topic:get_partitions(T),
     exit(P, kill),
     timer:sleep(50), %wait for restart...
     % Validate a second write to ensure the topic can access the restarted process:
     topic:put(T, "TEST2"),
-    {_, [R1, R2]} = disk_log:chunk("it_must_handle_partition_failures_test1", start, 4),
-    ?assertEqual({key, null, value, "TEST2"}, R2),
+    {_, [R1, R2]} = disk_log:chunk("it_must_handle_partition_failures_test1", start, 2),
+    %Note that it has recoverd the max offset from the disk log!
+    ?assertEqual({{offset, 2}, {key, null}, {value, "TEST2"}}, R2),
     application:stop(franz).
 
 
