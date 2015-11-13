@@ -36,10 +36,10 @@ handle_info(trigger, {CallbackModule, TopicPid, InternalState}) ->
     end,
     create_trigger(CallbackModule, NewInternalState),
     {noreply, {CallbackModule, TopicPid, NewInternalState}};
-handle_info(_Info, State) -> {noreply, State}.
+handle_info(_Info, State)           -> {noreply, State}.
 handle_call(_Request, _From, State) -> {reply, {error, unknown_call}, State}.
-handle_cast(_Msg, State) -> {noreply, State}.
-terminate(_Reason, _State) -> ok.
+handle_cast(_Msg, State)            -> {noreply, State}.
+terminate(_Reason, _State)          -> ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 % INTERNAL HELPERS
