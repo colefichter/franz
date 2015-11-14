@@ -51,6 +51,7 @@ it_must_handle_partition_failures_test() ->
     T = create_topic("it_must_handle_partition_failures_test"),
     % Validate an initial write:
     topic:put(T, "TEST1"),
+    timer:sleep(25),
     {_, [R1]} = disk_log:chunk("it_must_handle_partition_failures_test1", start, 1),
     ?assertEqual({{offset, 1}, {key, null}, {value, "TEST1"}}, R1),
     % Kill the partition, so that it restarts:
@@ -73,6 +74,6 @@ it_must_handle_partition_failures_test() ->
 
 
 create_topic(Name) ->
-    {ok, T} = franz:new_topic("it_must_handle_partition_failures_test"),
+    {ok, T} = franz:new_topic(Name),
     timer:sleep(50), %wait for partitions to start and register themselves.
     T.

@@ -26,5 +26,6 @@ init([]) ->
     MaxTime = 3000,
     FranzServer = ?CHILD(franz, worker),
     TopicSuperSup = ?CHILD(topic_supersup, supervisor),
+    ConsumerStateServer = ?CHILD(consumer_state_server, worker),
     % one_for_all correct? Seems like it. They can't work without each other.
-    {ok, {{one_for_all, MaxRestart, MaxTime}, [TopicSuperSup, FranzServer]}}.
+    {ok, {{one_for_all, MaxRestart, MaxTime}, [TopicSuperSup, FranzServer, ConsumerStateServer]}}.
