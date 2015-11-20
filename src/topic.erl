@@ -9,7 +9,6 @@
 
 % A topic keeps track of its partitions (think of it as a partition server).
 
-%% The friendly supervisor is started dynamically!
 -define(SPEC,
     {partition_sup,
     {partition_sup, start_link, []},
@@ -38,19 +37,14 @@ put(TopicServerPid, Value) -> put(TopicServerPid, null, Value).
 
 % Mostly for testing:
 get_partitions(TopicServerPid) -> gen_server:call(TopicServerPid, {get_partitions}).
-
 get_partitioner(TopicServerPid) -> gen_server:call(TopicServerPid, {get_partitioner}).
 
 set_partitioner(TopicServerPid, PartitionFun) -> gen_server:call(TopicServerPid, {set_partitioner, PartitionFun}).
-
-
 
 % This allows us to locate new partition processes when they crash and get restarted!
 register_started_partition(TopicServerPid, Topic, PartitionNumber, PartitionPid) ->
     % Must be a cast to prevent deadlock while we wait for the child partitions to start!
     gen_server:cast(TopicServerPid, {register_started_partition, Topic, PartitionNumber, PartitionPid}).
-
-
 
 % gen_server callbacks
 init({Name, NumPartitions, TopicSup}) ->
@@ -60,16 +54,10 @@ init({Name, NumPartitions, TopicSup}) ->
     State = #state{name = Name, num_partitions = NumPartitions},
     {ok, State}. %This list will hold the partition Pids
 
-
 handle_call({get_partitions}, _From, State) ->
     DictList = orddict:to_list(State#state.partitions),
     Partitions = lists:map(fun({_K,V}) -> V end, DictList),
     {reply, Partitions, State};
-
-
-
-
-
 handle_call({set_partitioner, PartitionFun}, _From, State) ->
     {Reply, NewState} = case erlang:fun_info(PartitionFun, arity) of
         {arity, 3} -> 
@@ -80,8 +68,6 @@ handle_call({set_partitioner, PartitionFun}, _From, State) ->
     end,
     {reply, Reply, NewState};
 handle_call({get_partitioner}, _From, State) -> {reply, State#state.partitioner, State};
-
-
 
 % TODO: Refactor this block. We can have a single block if the partitioner always returns 1 for a null key.
 handle_call({put, null, Value}, _From, State) -> 
@@ -109,7 +95,6 @@ handle_call({put, Key, Value}, _From, State) ->
     end,
     {reply, Reply, NewState};
 
-
 handle_call({partition_count}, _From, State = #state{num_partitions = NumPartitions}) ->
     {reply, NumPartitions, State};
 handle_call(_Msg, _From, State) -> {noreply, State}.
@@ -135,27 +120,10 @@ handle_info(Msg, State) ->
     io:format("Unknown msg: ~p~n", [Msg]),
     {noreply, State}.
 
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
-
-terminate(_Reason, _State) ->
-    ok.
+code_change(_OldVsn, State, _Extra) -> {ok, State}.
+terminate(_Reason, _State)          -> ok.
 
 % Internal helpers
-% start_partitions(Topic, PartitionSup, NumPartitions) ->
-%     start_partitions(Topic, PartitionSup, NumPartitions, []).
-
-% start_partitions(_Topic, _PartitionSup, 0, PartitionsList) -> PartitionsList;
-% start_partitions(Topic, PartitionSup, NumPartitions, PartitionsList) ->
-%     {ok, PartitionPid} = supervisor:start_child(PartitionSup, [self(), Topic, NumPartitions]),
-%     %TODO: do we actually need to monitor this guy?
-%     %TODO: is this right? Should we be linking to the partition? What happens if a partition crashes?
-%     _Ref = erlang:monitor(process, PartitionPid),
-%     start_partitions(Topic, PartitionSup, NumPartitions - 1, [PartitionPid| PartitionsList]).
-
-
-
-
 start_partitions(_Topic, _PartitionSup, 0) -> ok;
 start_partitions(Topic, PartitionSup, NumPartitions) ->
     {ok, PartitionPid} = supervisor:start_child(PartitionSup, [self(), Topic, NumPartitions]),
@@ -163,9 +131,6 @@ start_partitions(Topic, PartitionSup, NumPartitions) ->
     %TODO: is this right? Should we be linking to the partition? What happens if a partition crashes?
     _Ref = erlang:monitor(process, PartitionPid),
     start_partitions(Topic, PartitionSup, NumPartitions - 1).
-
-
-
 
 % The default partitioner:
 select_partition_number(null, _, _) -> 1;
