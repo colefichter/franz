@@ -46,20 +46,10 @@ handle_call({new_topic, Name, Partitions}, _From, Topics) ->
     end,
     NewTopics = dict:store(Name, TopicPid, Topics),
     {reply, {ok, Pid}, NewTopics};
-handle_call({count}, _From, Topics) ->
-    {reply, dict:size(Topics), Topics};
+handle_call({count}, _From, Topics) -> {reply, dict:size(Topics), Topics};
 
-handle_call(_Request, _From, State) ->
-    {reply, {error, unknown_call}, State}.
-
-handle_cast(_Msg, State) ->
-    {noreply, State}.
-
-handle_info(_Info, State) ->
-    {noreply, State}.
-
-terminate(_Reason, _State) ->
-    ok.
-
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+handle_call(_Request, _From, State) -> {reply, {error, unknown_call}, State}.
+handle_cast(_Msg, State)            -> {noreply, State}.
+handle_info(_Info, State)           -> {noreply, State}.
+terminate(_Reason, _State)          -> ok.
+code_change(_OldVsn, State, _Extra) -> {ok, State}.
