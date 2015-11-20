@@ -16,7 +16,6 @@ bootstrap() ->
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
-
 start(_StartType, _StartArgs) ->
     {ok, Cwd} = file:get_cwd(),
     % Will this work on windows?
@@ -25,7 +24,4 @@ start(_StartType, _StartArgs) ->
     file:make_dir(DataDir),
     franz_sup:start_link().
 
-stop(_State) ->
-    ok.
-
-
+stop(_State) -> ok.
