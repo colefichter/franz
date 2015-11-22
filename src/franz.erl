@@ -41,7 +41,11 @@ handle_call({partition_count, Name}, _From, Topics) ->
 handle_call({new_topic, Name, Partitions}, _From, Topics) ->
      % TODO: refactor. Server must keep track of all topics.
     TopicPid = case topic_supersup:start_topic(Name, Partitions) of
-        {ok, Pid} -> Pid;
+        {ok, Pid} -> 
+            % delay so that the topic partition can be created and the log can be opened before
+            % we try to read it!
+            timer:sleep(50), % TODO: improve this!
+            Pid;
         {error, {already_started, Pid}} -> Pid
     end,
     NewTopics = dict:store(Name, TopicPid, Topics),
