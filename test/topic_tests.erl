@@ -60,6 +60,7 @@ it_must_handle_partition_failures_test() ->
     timer:sleep(50), %wait for restart...
     % Validate a second write to ensure the topic can access the restarted process:
     topic:put(T, "TEST2"),
+    timer:sleep(50),
     {_, [R1, R2]} = disk_log:chunk("it_must_handle_partition_failures_test1", start, 2),
     %Note that it has recoverd the max offset from the disk log!
     ?assertEqual({{offset, 2}, {key, null}, {value, "TEST2"}}, R2),
